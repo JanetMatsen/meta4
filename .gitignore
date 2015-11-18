@@ -1,0 +1,35 @@
+*.bai
+*.bam
+*.bam.bai
+*.dat
+*.fasta
+*.fasta.*  
+*.fasta.amb
+*.fasta.ann
+*.fasta.bwt
+*.fasta.fai
+*.fasta.pac
+*.fasta.sa
+*.fastq*
+*.flagstat
+*.gbk
+#*.gitignore
+*.gff
+*.RData
+*.Rhistory
+*.sam
+*.sql
+*.sql.*
+*.swp
+
+janet_source_me
+# for link used in bbmap dirs
+ref
+
+#*.sorted.bam  # gets handled by the .bam
+#*.sorted.bam.bai # gets handled by the .bai
+#*.summary.dat   # gets handled by the .dat
+# don't include:
+# .gbk
+# .fasta
+# .gbk.gff
