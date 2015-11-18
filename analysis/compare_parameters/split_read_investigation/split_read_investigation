@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#PBS -N "LakWasMet55_HOW8_2_aln"
+#PBS -d /gscratch/lidstrom/meta4/analysis/compare_parameters/split_read_investigation
+#PBS -l walltime=999:99:99,mem=2gb,feature=8core,nodes=1:ppn=8
+#PBS -W umask=002, group_list=hyak-lidstrom
+#PBS -M jmatsen@uw.edu,dacb@uw.edu
+#PBS -m abe
+#PBS -o split_read_investigation.log
+#PBS -e split_read_investigation.err
+
+# source: https://www.biostars.org/p/17575/ 
+samtools view -F 14 /gscratch/lidstrom/meta4/workspace/LakWasMet55_HOW8_2/bbmap/LakWasMet55_HOW8_2.sorted.bam | grep -v " = " > split_read_investigation_bbmap.sam
+samtools view -F 14 /gscratch/lidstrom/meta4/workspace/LakWasMet55_HOW8_2/bwa/LakWasMet55_HOW8_2.sorted.bam | grep -v " = " > split_read_investigation_bwa.sam
+# warnings: not sure I am grabbing exactly what we want. E.g. original link says:
+	# -F 14 will not remove reads with flag 97 or 145 
+
+# number conversions: https://broadinstitute.github.io/picard/explain-flags.html
+# 14 =  read mapped in proper pair, read unmapped, mate unmapped 
+# 97 = read paired, mate reverse strand, first in pair
+# 145 =  read paired, read reverse strand, second in pair

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source ../globals.sh
+
+mysql -h $HOST $DB < create_view.sql
