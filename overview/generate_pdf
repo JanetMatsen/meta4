@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# requires graphviz be installed
+dot -Tpdf -ooverview.pdf overview.gv

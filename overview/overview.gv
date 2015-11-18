@@ -1,0 +1,69 @@
+digraph meta4 {
+	# input files
+	node [shape=trapezium];
+		FASTQ;
+		FASTA;
+		Genbank;
+
+	# output files
+	# intermediate representations
+	node [shape=rectangle];
+		GFF;
+		SAM;
+		SummaryDat;
+
+	# final products
+	node [shape=invtrapezium];
+		SortedBAM;
+		SortedBAMIndex;
+		JoinedSummaryCountsTSV;
+
+	# database tables
+	node [shape=invhouse];
+		GenesTable;
+		SequencesTable;
+		SampleSummaryTable;
+		SecondSampleSummaryTable [color=gray, style = filled];
+		JoinedSummaryView;
+
+	# programs/tools
+	node [shape=ellipse, color=lightblue, style = filled];
+		setup_genes_table;
+		"fa2sql.awk";
+		"bp_genbank2gff.pl";
+		"BWA/BBMAP";
+		"samtools";
+		"samtools index";
+		"htseq-count";
+		"extract_counts";
+		"create_view";
+		"database.sql";
+		"R";
+		"python";
+
+	Genbank -> "bp_genbank2gff.pl";
+	"bp_genbank2gff.pl" -> GFF;
+	Genbank -> setup_genes_table;
+	setup_genes_table -> GenesTable;
+	FASTQ -> "BWA/BBMAP";
+	FASTA -> "BWA/BBMAP";
+	FASTA -> "fa2sql.awk";
+	"fa2sql.awk" -> SequencesTable;
+	"BWA/BBMAP" -> SAM;
+	SAM -> samtools;
+	samtools -> SortedBAM;
+	SortedBAM -> "samtools index";
+	"samtools index" -> SortedBAMIndex
+	SAM -> "htseq-count";
+	GFF -> "htseq-count";
+	"htseq-count" -> SummaryDat;
+	SummaryDat -> "database.sql";
+	"database.sql" -> SampleSummaryTable;
+	SampleSummaryTable -> create_view;
+	SecondSampleSummaryTable -> create_view;
+	create_view -> JoinedSummaryView;
+	JoinedSummaryView -> extract_counts;
+	extract_counts -> JoinedSummaryCountsTSV;
+	JoinedSummaryCountsTSV -> R;
+	JoinedSummaryCountsTSV -> python;
+}
