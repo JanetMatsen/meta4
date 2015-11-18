@@ -1,0 +1,81 @@
+#!/bin/bash
+
+source globals.sh
+
+SAMPLES=`echo "SELECT sample FROM sample_info;" | mysql -h $HOST -s $DB`
+
+mysql -h $HOST $DB << EOF
+DROP TABLE IF EXISTS statistics;
+CREATE TABLE statistics (
+	sample	VARCHAR(32),
+	total_reads	INTEGER,
+	total_reads_mapped	INTEGER,
+	reads_mapped_to_rRNA	INTEGER,
+	reads_mapped_to_tRNA	INTEGER,
+	reads_mapped_to_CDS	INTEGER,
+	reads_mapped_to_hypo	INTEGER,
+	CDS_max_hits_per_kb	FLOAT,
+	CDS_mean_hits_per_kb	FLOAT,
+	CDS_hits_sum		INTEGER
+);
+EOF
+
+for sample in $SAMPLES
+do
+	echo $sample
+	workspace_dir=`echo "SELECT path_to_workspace FROM sample_info WHERE sample = '$sample';" | mysql -h $HOST -s $DB`
+	bam=$workspace_dir/bwa/$sample.sorted.bam
+	flagstat=$bam.flagstat
+	genes_table=`echo "SELECT genes_table FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+
+	if [ ! -e $flagstat -o $flagstat -ot $bam ]
+	then
+		$SAMTOOLS flagstat $bam > $flagstat
+	fi
+
+	total_reads=`awk '{ if ($4 == "in" && $5 == "total") print $1 }' $flagstat`
+	mapped_reads=`awk '{ if ($4 == "mapped") print $1 }' $flagstat`
+
+mysql -h $HOST $DB << EOF&
+SELECT @reads_mapped_to_rRNA:=SUM(reads_mapped) 
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "rRNA";
+
+SELECT @reads_mapped_to_tRNA:=SUM(reads_mapped) 
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "tRNA";
+
+SELECT @reads_mapped_to_CDS:=SUM(reads_mapped) 
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "CDS";
+
+SELECT @reads_mapped_to_hypo:=SUM(reads_mapped) 
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE product like "%hypothetical%";
+
+SELECT @CDS_max_hits_per_kb:=MAX(reads_mapped / (((g.end_coord - g.start_coord) + 1) / 1000))
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "CDS";
+
+SELECT @CDS_mean_hits_per_kb:=AVG(reads_mapped / (((g.end_coord - g.start_coord) + 1) / 1000))
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "CDS";
+
+SELECT @CDS_hits_sum:=SUM(reads_mapped)
+	FROM summary_${sample} AS s
+		INNER JOIN $genes_table AS g ON s.locus_tag = g.locus_tag
+	WHERE type = "CDS";
+
+INSERT INTO statistics (sample, total_reads, total_reads_mapped, reads_mapped_to_rRNA, reads_mapped_to_tRNA, reads_mapped_to_CDS, reads_mapped_to_hypo, CDS_max_hits_per_kb, CDS_mean_hits_per_kb, CDS_hits_sum) VALUES ("$sample", $total_reads, $mapped_reads, @reads_mapped_to_rRNA, @reads_mapped_to_tRNA, @reads_mapped_to_CDS, @reads_mapped_to_hypo, @CDS_max_hits_per_kb, @CDS_mean_hits_per_kb, @CDS_hits_sum);
+EOF
+done
+
+wait
+
+./statistics_extract

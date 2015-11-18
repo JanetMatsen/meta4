@@ -1,0 +1,36 @@
+#!/bin/bash
+
+source globals.sh
+
+mysql $DB -h $HOST << EOF
+DROP TABLE IF EXISTS sample_info;
+CREATE TABLE sample_info (
+	sample  VARCHAR(64) PRIMARY KEY NOT NULL,
+	shortd  VARCHAR(64) NOT NULL,
+	mutation_locus
+		VARCHAR(32),
+	bior    INTEGER NOT NULL,
+	techr   INTEGER NOT NULL,
+	path_to_FASTQ_R1
+		VARCHAR(256),
+	path_to_FASTQ_R2
+		VARCHAR(256),
+	read_length	INTEGER,
+	path_to_genome_FASTA
+		VARCHAR(256) NOT NULL,
+	path_to_proteome_FASTA
+		VARCHAR(256) NOT NULL,
+	path_to_GFF
+		VARCHAR(256) NOT NULL,
+	genes_table
+		VARCHAR(256),
+	include BIT NOT NULL,
+	is_qc	BIT NOT NULL,
+	path_to_alignment
+		VARCHAR(256),
+	path_to_workspace
+		VARCHAR(256)
+);
+DROP INDEX locus_start_end ON genes_isolate_genomes;
+CREATE INDEX locus_start_end ON genes_isolate_genomes (locus,start_coord,end_coord);
+EOF

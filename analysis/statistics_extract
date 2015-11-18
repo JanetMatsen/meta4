@@ -1,0 +1,18 @@
+#!/bin/bash
+
+source globals.sh
+
+mysql -h $HOST -s $DB << EOF > statistics.xls
+SELECT "sample ID", "sample", "sample long", "total reads", "reads mapped", "fraction of reads mapped", "reads mapped to rRNA", "fraction of reads mapped to rRNA", "reads mapped to tRNA", "fraction reads mapped to tRNA", "reads mapped to CDS", "fraction of reads mapped to CDS", "reads mapped to hypothetical proteins", "fraction of reads mapped to hypothetical proteins", "max hits per kb to CDS" , "mean hits per kb to CDS";
+SELECT s.sample, si.shortd, s.total_reads, s.total_reads_mapped, s.total_reads_mapped / s.total_reads, 
+		s.reads_mapped_to_rRNA, s.reads_mapped_to_rRNA / s.total_reads_mapped,
+		s.reads_mapped_to_tRNA, s.reads_mapped_to_tRNA / s.total_reads_mapped,
+		s.reads_mapped_to_CDS, s.reads_mapped_to_CDS / s.total_reads_mapped,
+		s.reads_mapped_to_hypo, s.reads_mapped_to_hypo / s.total_reads_mapped,
+		s.CDS_max_hits_per_kb,
+		s.CDS_mean_hits_per_kb
+	FROM statistics AS s
+		INNER JOIN sample_info AS si ON s.sample = si.sample
+	ORDER BY s.sample
+;
+EOF

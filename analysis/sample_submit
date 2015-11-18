@@ -1,0 +1,34 @@
+#!/bin/bash
+
+source globals.sh
+
+here=`pwd`
+
+if [ "$#" -ne 1 ]
+then
+	echo "usage: sample_submit <sample>"
+	exit 1
+fi
+
+sample=$1
+
+workspace_dir=`pwd | awk -F'/' '{ for (i=1; i < NF; ++i) printf("%s/", $i); printf("\n"); }'`workspace
+dir=$workspace_dir/$sample/bwa
+if [ ! -d $dir ]
+then
+	echo "the workspace directory $dir does not exists, have you imported the sample yet?"
+	exit 1
+fi
+cd $dir
+
+if [ ! -e aln -o ! -e samtools -o ! -e database ]
+then
+	echo "the bwa scripts were not found in $dir, have you run bwa_setup for this sample yet?"
+	exit 1
+fi
+aln=`qsub aln`
+samtools=`qsub -W depend=afterok:$aln samtools`
+database=`qsub -W depend=afterok:$samtools database`
+#set database=`qsub database`
+
+echo "jobs submmited: aln=$aln      samtools=$samtools      database=$database"

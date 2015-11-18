@@ -1,0 +1,2 @@
+#sample	shortd	mutation_locus	bior	techr	path_to_FASTQ_R1	path_to_FASTQ_R2	read_length	path_to_genome_FASTA	path_to_proteome_FASTA	path_to_gff	gene_table	include?	is_qc?
+LakWasMet55_HOW8_2	LakWasMet55_HOW8_2		1	1	/gscratch/lidstrom/meta4/data/LakWasMet55_HOW8_2/Raw_Data/r1.fastq.gz	/gscratch/lidstrom/meta4/data/LakWasMet55_HOW8_2/Raw_Data/r2.fastq.gz	151	/gscratch/lidstrom/meta4/data/isolate_genomes.fasta		/gscratch/lidstrom/meta4/data/isolate_genomes.gbk.gff	genes_isolate_genomes	Y	Y

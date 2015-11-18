@@ -1,0 +1,115 @@
+#!/bin/bash
+
+source globals.sh
+
+here=`pwd`
+
+if [ "$#" -ne 1 ]
+then
+	echo "usage: bwa_setup <sample>"
+	exit 1
+fi
+
+sample=$1
+fastq_R1=`echo "SELECT path_to_FASTQ_R1 FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+fastq_R2=`echo "SELECT path_to_FASTQ_R1 FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+genome_fasta=`echo "SELECT path_to_genome_fasta FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+proteome_fasta=`echo "SELECT path_to_proteome_fasta FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+read_length=`echo "SELECT read_length FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+genes_table=`echo "SELECT genes_table FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+gff=`echo "SELECT path_to_gff FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+read_length=`echo "SELECT read_length FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+
+workspace_dir=`pwd | awk -F'/' '{ for (i=1; i < NF; ++i) printf("%s/", $i); printf("\n"); }'`workspace
+dir=$workspace_dir/$sample
+
+if [ ! -d $dir ]
+then
+	echo "the workspace directory $dir does not exists, have you imported the sample yet?"
+	exit 1
+fi
+
+cd $dir
+mkdir -p bwa
+cd bwa
+
+if [ ! -e $genome_fasta.pac ]
+then
+	echo "creating bwa index of $genome_fasta"
+	$BWA index $genome_fasta
+fi
+
+cat << EOF > aln
+#!/bin/bash
+
+#PBS -N "${sample}_aln"
+#PBS -d $dir/bwa
+#PBS -l $QL,nodes=1:ppn=8
+#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -M $EMAIL
+#PBS -m abe
+#PBS -o aln.log
+#PBS -e aln.err
+
+$BWA mem -M -t 8 $genome_fasta $fastq_R1 $fastq_R2 > $sample.sam
+EOF
+chmod +x aln
+
+cat << EOF > samtools
+#!/bin/bash
+
+#PBS -N "${sample}_samtools"
+#PBS -d $dir/bwa
+#PBS -l $QL,nodes=1:ppn=8
+#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -M $EMAIL
+#PBS -m abe
+#PBS -o samtools.log
+#PBS -e samtools.err
+
+$SAMTOOLS view -bt $genome_fasta -o $sample.bam $sample.sam
+$SAMTOOLS sort $sample.bam $sample.sorted
+$SAMTOOLS index $sample.sorted.bam
+$HTSEQ_COUNT -m intersection-nonempty -s no -t gene -i ID $sample.sam $gff > $sample.summary.dat
+\rm -r $sample.bam
+EOF
+chmod +x samtools
+
+cat << EOF > database.sql
+DROP TABLE IF EXISTS summary_${sample};
+CREATE TABLE summary_${sample} (
+        locus_tag VARCHAR(64) PRIMARY KEY,
+	reads_mapped FLOAT,
+	rpkm FLOAT
+);
+
+LOAD DATA INFILE "$dir/bwa/$sample.summary.dat" INTO TABLE summary_${sample} FIELDS TERMINATED BY '\t' (locus_tag, reads_mapped);
+
+# count reads mapped to coding sequences
+SELECT @sum_to_CDS:=SUM(reads_mapped) FROM summary_${sample} AS s INNER JOIN $genes_table AS g ON s.locus_tag=g.locus_tag WHERE g.type='CDS';
+
+# compute RPKM
+UPDATE summary_${sample} AS s INNER JOIN $genes_table AS g ON s.locus_tag=g.locus_tag SET rpkm=
+        reads_mapped /
+# length of gene in kilobases
+                (((g.end_coord + 1) - g.start_coord) / 1000) /
+# millions of reads mapped to coding sequences
+                (@sum_to_CDS / 1000000)
+;
+EOF
+cat << EOF > database
+#!/bin/bash
+
+#PBS -N "${sample}_database"
+#PBS -d $dir/bwa
+#PBS -l $QL,nodes=1:ppn=8
+#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -M $EMAIL
+#PBS -m abe
+#PBS -o database.log
+#PBS -e database.err
+
+$MYSQL -h `$MYSQL_HOST` $DB < database.sql
+\rm -r $sample.sam
+EOF
+chmod +x database
