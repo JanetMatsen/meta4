@@ -1,0 +1,22 @@
+java -Djava.library.path=/gscratch/lidstrom/bbmap/jni/ -ea -Xmx13820m -cp /gscratch/lidstrom/bbmap/current/ align2.BBMap build=1 overwrite=true fastareadlen=500 ref=isolate_genomes.fasta
+Executing align2.BBMap [build=1, overwrite=true, fastareadlen=500, ref=isolate_genomes.fasta]
+
+BBMap version 35.59
+Retaining first best site only for ambiguous mappings.
+No output file.
+Writing reference.
+Executing dna.FastaToChromArrays2 [isolate_genomes.fasta, 1, writeinthread=false, genscaffoldinfo=true, retain, waitforwriting=false, gz=true, maxlen=536670912, writechroms=true, minscaf=1, midpad=300, startpad=8000, stoppad=8000, nodisk=false]
+
+Set genScaffoldInfo=true
+Writing chunk 1
+Set genome to 1
+
+Loaded Reference:	0.024 seconds.
+Loading index for chunk 1-1, build 1
+No index available; generating from reference genome: /gscratch/lidstrom/meta4/data/ref/index/1/chr1_index_k13_c3_b1.block
+Indexing threads started for block 0-1
+Indexing threads finished for block 0-1
+Generated Index:	53.913 seconds.
+No reads to process; quitting.
+
+Total time:     	59.605 seconds.

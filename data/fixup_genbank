@@ -1,0 +1,3 @@
+#!/bin/bash
+
+awk '{ if ($2 == "scaffold1" && $3 == 4664957) printf("LOCUS       m77_scaffold1      4664957 bp      DNA linear      22-OCT-2015\n"); else if ($2 == "scaffold1" && $3 == 5412720) printf("LOCUS       m11_scaffold1      5412720 bp      DNA linear      22-OCT-2015\n"); else if ($2 == "scaffold1" && $3 == 3033021) printf("LOCUS       m5_scaffold1      3033021 bp      DNA linear      22-OCT-2015\n"); else print $0; }' isolate_genomes.original.gbk

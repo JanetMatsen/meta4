@@ -1,0 +1,7 @@
+#!/bin/bash
+
+IN=8904.5.115252.CTATAC.fastq.gz
+R1=r1.fastq.gz
+R2=r2.fastq.gz
+
+bbsplitpairs.sh in=$IN out=$R1 out2=$R2 outsingle=s.fastq.gz overwrite=t showspeed=t ziplevel=9 >& $0.log

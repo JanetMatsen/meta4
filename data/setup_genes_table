@@ -1,0 +1,9 @@
+#!/bin/bash
+
+source ../analysis/globals.sh
+
+/gscratch/esci/dacb/bioperl/bin/bp_genbank2gff3.pl isolate_genomes.gbk
+
+awk -v create_table=1 -v table=genes_isolate_genomes -f gb2sql.awk isolate_genomes.gbk | mysql -h $HOST $DB
+
+awk -v create_table=1 -v table=sequences_isolate_genomes -f fa2sql.awk isolate_genomes.fasta | mysql -h $HOST $DB

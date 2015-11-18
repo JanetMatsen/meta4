@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./fixup_fasta > isolate_genomes.fasta
+./fixup_genbank > isolate_genomes.gbk
+
+samtools faidx isolate_genomes.fasta
