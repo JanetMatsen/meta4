@@ -1,0 +1,6 @@
+#!/bin/bash
+
+in=LakWasMet55_HOW8_2.sorted.sam
+out=$0.$in.dat
+
+awk -F'\t' '/^HISEQ/ { tags=$12; if (substr(tags, 1, 2) == "NM") { split(tags, a, ":"); print a[3]; } }' $in > $out
