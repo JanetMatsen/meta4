@@ -1,10 +1,17 @@
 #!/gscratch/esci/dacb/anacondainstall/bin/python
 
 import re
+import matplotlib
 import os  # to make a dir for plots
 
+# Force matplotlib to not use any Xwindows backend.
+        # http://matplotlib.org/faq/howto_faq.html#generate-images-without-having-a-window-appear
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
+
 inputFile = "extract_CIGAR.LakWasMet55_HOW8_2.sorted.sam.dat"
-inputFile = "extract_CIGAR.LakWasMet55_HOW8_2.sorted.sam.dat.testing"
+#inputFile = "extract_CIGAR.LakWasMet55_HOW8_2.sorted.sam.dat.testing"
 
 # counters
 totalReads = 0
@@ -63,14 +70,12 @@ for elementType in lengthFreqDict.keys():
 		#  which is what lenKey is to string which is what required for dict access
 		print("\t{0:d}\t{1:d}".format(lenKey, lengthFreqDict[elementType][str(lenKey)]))
 
-# Bad form to import low in script, so move to top once things work. 
-# http://stackoverflow.com/questions/5926061/plot-histogram-in-python
-import matplotlib
-# Force matplotlib to not use any Xwindows backend.
-        # http://matplotlib.org/faq/howto_faq.html#generate-images-without-having-a-window-appear
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import numpy as np
+# Set some plotting parameters.
+# Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
+plt.figure(figsize=(6,4))
+# Prevent the x-labels from cutting off.
+# http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
+plt.gcf().subplots_adjust(bottom=0.15)
 
 # make dir for all figures
 plot_dir = "./parse_CIGAR_plots/"
@@ -78,6 +83,7 @@ if not os.path.exists(plot_dir):
     os.makedirs(plot_dir, 0755)
 
 # generate plot for frequency of each CIGAR letter's appearance across reads. 
+# http://stackoverflow.com/questions/5926061/plot-histogram-in-python
 pos = np.arange(len(elementFreqDict.keys()))
 width = 1.0     # gives histogram aspect to the bar diagram
 ax = plt.axes()
@@ -89,28 +95,25 @@ print(elementFreqDict.values())
 ax.set_xlabel('CIGAR letter')
 ax.set_ylabel('frequency across reads')
 ax.set_title('CIGAR fequencies: BWA')
-
+# generate plot
 plt.bar(pos, elementFreqDict.values(), width, color='g')
 plt.savefig(plot_dir + "elementFreq.pdf", dpi=None, facecolor='w', edgecolor='w',
         transparent=True, bbox_inches=None, pad_inches=0.1,
         frameon=None)
 
-## clear figure between plots
-#plt.clf()
-#
-#pos = np.arange(len(lengthFreqDict['M'].keys()))
-#print(lengthFreqDict['M'].keys())
-#print(lengthFreqDict['M'].values())
-#ax = plt.axes()
-#ax.set_xlabel('length for CIGAR letter ZZZ')
-#ax.set_ylabel('frequency across reads')
-#ax.set_title('length of ZZZ sequence of CIGARS: BWA')
-#plt.bar(pos, lengthFreqDict['M'].values(), width, color='b')
-#plt.savefig(plot_dir + "lengthFreq.pdf", dpi=None, facecolor='w', edgecolor='w',
-#        transparent=True, bbox_inches=None, pad_inches=0.1,
-#        frameon=None)
+# A dict to tell you what CIGAR letters mean.
+# http://seqanswers.com/forums/showthread.php?t=4882
+CIGAR_letter_dict = {'M': 'match or mismatch', 
+			'I' : 'insertion', 
+			'D': 'deletion',
+			# The extended cigar adds
+			'N' : 'skipped bases on reference',
+			'S' : 'soft clipping',
+			'H' : 'hard clipping',
+			'P' : 'padding' }
 
 
+# Function for plotting frequency of regions specified by CIGAR strings.
 print "use plot_freq_for_cigar_val(key)"
 def plot_freq_for_cigar_val(key, plot_dir):
 	print "lengthFreqDict[key].items()" 
@@ -127,12 +130,9 @@ def plot_freq_for_cigar_val(key, plot_dir):
 	ax = plt.axes()
 	#ax.set_xticks(pos + (width / 2))
 	#ax.set_xticklabels(lengthFreqDict[key].keys())
-	ax.set_xlabel('lengths for CIGAR letter ' + key)
+	ax.set_xlabel('lengths for CIGAR letter ' + key + ": " + CIGAR_letter_dict[key])
 	ax.set_ylabel('frequency across reads')
-	ax.set_title('length for flag ' + key +  ' in CIGARS: BWA')
-	# generate plot
-	#plt.bar(pos, lengthFreqDict[key].values(), width, color='b')
-
+	ax.set_title('length for flag ' + key +  ' in CIGARS')
 	print "d.keys():"
 	print d.keys()
 	min_bin = np.min(d.keys()) # doesn't work if all values are 0? 
@@ -143,8 +143,8 @@ def plot_freq_for_cigar_val(key, plot_dir):
 		vals[k - min_bin] = v
 	print bins
 	print vals
+	# generate plot
 	plt.bar(bins, vals)
-	# plt.hist(lengthFreqDict[key].keys(), weights = lengthFreqDict[key].values())  # do we need something like bins=range(50) from   http://stackoverflow.com/questions/19212508/plotting-a-histogram-from-pre-counted-data-in-matplotlib ? 
 	plt.savefig(plot_dir + "lengthFreq-"+key+ ".pdf", dpi=None, facecolor='w', edgecolor='w',
 		transparent=True, bbox_inches=None, pad_inches=0.1,
 		frameon=None)
@@ -155,7 +155,10 @@ plot_freq_for_cigar_val(key="M", plot_dir=plot_dir)
 #	print key
 #	plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
 
-# temporary fix: avoid keys that have all zero values.
-for key in ["S", "M", "I", "H", "D"]:
+
+# plot frequency of lengths specified by CIGAR string letters, across all reads.  Note that 
+for key in lengthFreqDict.keys():
 	print key
-	plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
+	print lengthFreqDict[key]
+	if lengthFreqDict[key]:  # dict is False if empty.
+		plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)

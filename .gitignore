@@ -15,6 +15,7 @@
 *.gbk
 #*.gitignore
 *.gff
+*.pdf
 *.RData
 *.Rhistory
 *.sam
@@ -22,7 +23,8 @@
 *.sql.*
 *.swp
 
-janet_source_me
+extract_CIGAR.LakWasMet55_HOW8_2.sorted.sam.dat.testing
+
 # for link used in bbmap dirs
 ref
 
