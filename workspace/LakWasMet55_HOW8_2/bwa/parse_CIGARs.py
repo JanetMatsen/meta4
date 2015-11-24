@@ -149,12 +149,6 @@ def plot_freq_for_cigar_val(key, plot_dir):
 		transparent=True, bbox_inches=None, pad_inches=0.1,
 		frameon=None)
 
-plot_freq_for_cigar_val(key="M", plot_dir=plot_dir)
-# Didn't work for all zero ones.  Will fix the np.zeroes thing on Monday.
-#for key in lengthFreqDict.keys():
-#	print key
-#	plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
-
 
 # plot frequency of lengths specified by CIGAR string letters, across all reads.  Note that 
 for key in lengthFreqDict.keys():
