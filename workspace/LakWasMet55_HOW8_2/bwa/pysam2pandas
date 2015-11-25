@@ -37,13 +37,22 @@ class Scaffold:
 		self.lengthFreqDict = { 'M' : {}, 'I' : {}, 'D' : {}, 'N' : {}, 'S' : {}, 'H' : {}, 'P' : {}, 'X' : {}, '=' : {} }
 		self.operationFreqDict = { 'M' : 0, 'I' : 0, 'D' : 0, 'N' : 0, 'S' : 0, 'H' : 0, 'P' : 0, 'X' : 0, '=' : 0 }
 		self.mappingQualDict = { }
-	def include_cigar_stats(cigar):
-		# Incomplete
-		print "not implemented yet"
+	def include_cigar_stats(self,read):
+		# Add a count to operationFreqDict for each piece of information in the CIGAR. 
+		for operation in read.cigartuples:  # uses pysam
+			# convert from numerical CIGAR codes to the letters
+			oper = operationInt2StrDict[operation[0]]  
+			length = operation[1]
+			# Increase count (doesn't consider length)
+			self.operationFreqDict[oper] += 1
+			# Add length information to lengthFreqDict
+			if operation[1] in self.lengthFreqDict[oper].keys():
+				self.lengthFreqDict[oper][operation[1]] += 1 
+			else: self.lengthFreqDict[oper][operation[1]] = 1
 	def __str__(self):
-		#s = "name turned off"
-		#s = self.name + "\n"
-		s = pprint.pformat(self.operationFreqDict) 
+		s = self.name + "\n"
+		s += pprint.pformat(self.operationFreqDict) + "\n" 
+		s += pprint.pformat(self.lengthFreqDict)
 		return s 
 
 # Will have a dictionary of Scaffold objects to collect information in CIGAR strings and mapping qualities. 
@@ -70,33 +79,7 @@ for s in scaffoldsDict.keys():
 # use until_eof=True to circumvent needed an index, should also be faster
 for read in bamFile.fetch(until_eof=True):
 	if not read.is_unmapped:
-		# Use the operation tuples for each read to add counts to the Scaffold object for that scaffold in scaffoldsDict
-		for operation in read.cigartuples:
-			print "operation:"
-			print operation
-			oper = operationInt2StrDict[operation[0]]
-			print "oper: " + oper
-			length = operation[1]
-			print "length: " + str(length)
-			print "scaffoldsDict[read.reference_name].operationFreqDict[oper]:"
-			print "reference name:" + read.reference_name
-			print scaffoldsDict[read.reference_name].operationFreqDict[oper]
-			# Dig down to the operationFreqDict and add a count of 1 to the frequency dict. 
-			scaffoldsDict[read.reference_name].operationFreqDict[oper] += 1
-			print "scaffoldsDict[read.reference_name].operationFreqDict[oper] after adding 1:"
-			print scaffoldsDict[read.reference_name].operationFreqDict[oper]
-			print scaffoldsDict[read.reference_name].operationFreqDict
-
-			# Add count for operation of that length
-				# INCOMPLETE 
-
-			# Before adding a count to the mappingQualDict of the Scaffold in the scaffoldsDict, add key for that quality if it isn't already there
-			if read.mapping_quality not in scaffoldsDict[read.reference_name].mappingQualDict.keys():
-				scaffoldsDict[read.reference_name].mappingQualDict[read.mapping_quality] = 0
-			# increase count in mappingQualDict by 1
-			scaffoldsDict[read.reference_name].mappingQualDict[read.mapping_quality] += 1
-
-
+		scaffoldsDict[read.reference_name].include_cigar_stats(read)
 
 #scaffolds = { }
 #for scaffold in scaffoldsDict.keys():
@@ -106,17 +89,12 @@ for read in bamFile.fetch(until_eof=True):
 
 print "print using __str__():"
 for s in scaffoldsDict.keys():
-	print s
-	#print scaffoldsDict.keys()
-	#print scaffoldsDict.values()
-	print scaffoldsDict[s]
+	if s == "NC_012968":
+		print s
+		#print scaffoldsDict.keys()
+		#print scaffoldsDict.values()
+		print scaffoldsDict[s]
 
-# Look for NC_012968, which was used as a key.
-if "NC_012968" in scaffoldsDict.keys():
-	print "yay"
-else: print "BOOO"
-
-print scaffoldsDict["NC_012968"]
 
 quit()
 
