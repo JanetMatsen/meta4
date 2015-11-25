@@ -32,28 +32,28 @@ inputFile = "LakWasMet55_HOW8_2.sorted.100k.sam"
 operationInt2StrDict = { 0 : 'M', 1 : 'I', 2 : 'D', 3 : 'N', 4 : 'S', 5 : 'H', 6 : 'P', 7 : '=', 8 : 'X' }
 
 class Scaffold:
-	def __init__(self, name):
-		self.name = name;
-		self.lengthFreqDict = { 'M' : {}, 'I' : {}, 'D' : {}, 'N' : {}, 'S' : {}, 'H' : {}, 'P' : {}, 'X' : {}, '=' : {} }
-		self.operationFreqDict = { 'M' : 0, 'I' : 0, 'D' : 0, 'N' : 0, 'S' : 0, 'H' : 0, 'P' : 0, 'X' : 0, '=' : 0 }
-		self.mappingQualDict = { }
-	def include_cigar_stats(self,read):
-		# Add a count to operationFreqDict for each piece of information in the CIGAR. 
-		for operation in read.cigartuples:  # uses pysam
-			# convert from numerical CIGAR codes to the letters
-			oper = operationInt2StrDict[operation[0]]  
-			length = operation[1]
-			# Increase count (doesn't consider length)
-			self.operationFreqDict[oper] += 1
-			# Add length information to lengthFreqDict
-			if operation[1] in self.lengthFreqDict[oper].keys():
-				self.lengthFreqDict[oper][operation[1]] += 1 
-			else: self.lengthFreqDict[oper][operation[1]] = 1
-	def __str__(self):
-		s = self.name + "\n"
-		s += pprint.pformat(self.operationFreqDict) + "\n" 
-		s += pprint.pformat(self.lengthFreqDict)
-		return s 
+    def __init__(self, name):
+        self.name = name;
+        self.lengthFreqDict = { 'M' : {}, 'I' : {}, 'D' : {}, 'N' : {}, 'S' : {}, 'H' : {}, 'P' : {}, 'X' : {}, '=' : {} }
+        self.operationFreqDict = { 'M' : 0, 'I' : 0, 'D' : 0, 'N' : 0, 'S' : 0, 'H' : 0, 'P' : 0, 'X' : 0, '=' : 0 }
+        self.mappingQualDict = { }
+    def include_cigar_stats(self,read):
+        # Add a count to operationFreqDict for each piece of information in the CIGAR. 
+        for operation in read.cigartuples:  # uses pysam
+            # convert from numerical CIGAR codes to the letters
+            oper = operationInt2StrDict[operation[0]]  
+            length = operation[1]
+            # Increase count (doesn't consider length)
+            self.operationFreqDict[oper] += 1
+            # Add length information to lengthFreqDict
+            if operation[1] in self.lengthFreqDict[oper].keys():
+                self.lengthFreqDict[oper][operation[1]] += 1 
+            else: self.lengthFreqDict[oper][operation[1]] = 1
+    def __str__(self):
+        s = self.name + "\n"
+        s += pprint.pformat(self.operationFreqDict) + "\n" 
+        s += pprint.pformat(self.lengthFreqDict)
+        return s 
 
 # Will have a dictionary of Scaffold objects to collect information in CIGAR strings and mapping qualities. 
 # Key = scaffold name provided by pysam's bamFile.references list
@@ -65,87 +65,55 @@ bamFile =  pysam.AlignmentFile(inputFile)
 
 # Initialize a Scaffold object for each scaffold in our metagenome. 
 for scaffold in bamFile.references:
-	# print an error if key already exists
-	if scaffold in scaffoldsDict.keys():
-		print "reduntant scaffold name"
-	scaffoldsDict[scaffold] = Scaffold(scaffold)
+    # print an error if key already exists
+    if scaffold in scaffoldsDict.keys():
+        print "reduntant scaffold name"
+    scaffoldsDict[scaffold] = Scaffold(scaffold)
 #print scaffoldsDict.keys()
 
 for s in scaffoldsDict.keys():
-	print s
-	print scaffoldsDict[s]
+    print s
+    print scaffoldsDict[s]
 
 # Loop over an alignment file to fill in values for Scaffold objects in scaffoldsDict
 # use until_eof=True to circumvent needed an index, should also be faster
+totalReads = 0
+unmappedReads = 0
 for read in bamFile.fetch(until_eof=True):
-	if not read.is_unmapped:
-		scaffoldsDict[read.reference_name].include_cigar_stats(read)
-
-#scaffolds = { }
-#for scaffold in scaffoldsDict.keys():
-#	scaffolds[scaffold] = props(scaffoldsDict[scaffold])
-
-#print(pd.DataFrame.from_dict(scaffolds))
-
-print "print using __str__():"
-for s in scaffoldsDict.keys():
-	if s == "NC_012968":
-		print s
-		#print scaffoldsDict.keys()
-		#print scaffoldsDict.values()
-		print scaffoldsDict[s]
-
-
-quit()
-
-# open the file
-with open(inputFile, "r") as inF:
-    # extract each line from the file and process
-    for line in inF:
-        totalReads = totalReads + 1
-        # progress bar
-        if totalReads % 100000 == 0:
-            print("parsed 100000 reads, {0:d} in total".format(totalReads))
-        # remove trailing newline
-        line = line.rstrip()
-        # do something with the line
-        # lines that contain a * are unmapped
-        if line == "*":
-            unmappedReads = unmappedReads + 1
-        else:
-            # find the matching elements
-            elements = re.findall("([0-9]+[MIDNSHPX=])", line)
-            # iterate over them
-            for element in elements:
-                # parse out the element type (e.g. MIDN) and length
-                elementType = element[-1]
-                elementLength = element[:-1]
-                # add one to the length histogram if the type has been seen before or set it to 1 if not
-                if elementLength in lengthFreqDict[elementType].keys():
-                    lengthFreqDict[elementType][elementLength] += 1
-                else:
-                    lengthFreqDict[elementType][elementLength] = 1
-                # update elementType histogram
-                elementFreqDict[elementType] += 1
+    totalReads += 1
+    if not read.is_unmapped:
+        scaffoldsDict[read.reference_name].include_cigar_stats(read)
+    else:
+        unmappedReads = unmappedReads + 1
 
 # output
 print("Found {0:d} total reads of which {1:d} were unmapped".format(totalReads, unmappedReads))
 
-# element types per read across all mapped reads
-print("Frequency of each element type across all mapped reads:")
-for elementType in elementFreqDict.keys():
-	print("{0:s}\t{1:d}".format(elementType, elementFreqDict[elementType]))
+#scaffolds = { }
+#for scaffold in scaffoldsDict.keys():
+#    scaffolds[scaffold] = props(scaffoldsDict[scaffold])
+
+#print(pd.DataFrame.from_dict(scaffolds))
+
+for s in scaffoldsDict.keys():
+    if s == "NC_012968":
+        print s
+        #print scaffoldsDict.keys()
+        #print scaffoldsDict.values()
+        print scaffoldsDict[s]
+
+quit()
 
 # per element histogram
 print("Frequency of lengths for each element type:")
 for elementType in lengthFreqDict.keys():
-	print("{0:s}:".format(elementType))
-	# return the lengths in the dictionary after mapping each element of keys
-	# to an integer and sorting the list
-	for lenKey in sorted(map(int, lengthFreqDict[elementType].keys())):
-		# print out the line, not the conversion from integer 
-		#  which is what lenKey is to string which is what required for dict access
-		print("\t{0:d}\t{1:d}".format(lenKey, lengthFreqDict[elementType][str(lenKey)]))
+    print("{0:s}:".format(elementType))
+    # return the lengths in the dictionary after mapping each element of keys
+    # to an integer and sorting the list
+    for lenKey in sorted(map(int, lengthFreqDict[elementType].keys())):
+        # print out the line, not the conversion from integer 
+        #  which is what lenKey is to string which is what required for dict access
+        print("\t{0:d}\t{1:d}".format(lenKey, lengthFreqDict[elementType][str(lenKey)]))
 
 
 tmp=pd.DataFrame.from_dict(lengthFreqDict)
@@ -187,55 +155,55 @@ plt.savefig(plot_dir + "elementFreq.pdf", dpi=None, facecolor='w', edgecolor='w'
 # A dict to tell you what CIGAR letters mean.
 # http://seqanswers.com/forums/showthread.php?t=4882
 CIGAR_letter_dict = {'M': 'match or mismatch', 
-			'I' : 'insertion', 
-			'D': 'deletion',
-			# The extended cigar adds
-			'N' : 'skipped bases on reference',
-			'S' : 'soft clipping',
-			'H' : 'hard clipping',
-			'P' : 'padding' }
+            'I' : 'insertion', 
+            'D': 'deletion',
+            # The extended cigar adds
+            'N' : 'skipped bases on reference',
+            'S' : 'soft clipping',
+            'H' : 'hard clipping',
+            'P' : 'padding' }
 
 
 # Function for plotting frequency of regions specified by CIGAR strings.
 print "use plot_freq_for_cigar_val(key)"
 def plot_freq_for_cigar_val(key, plot_dir):
-	print "lengthFreqDict[key].items()" 
-	print lengthFreqDict[key].items()
-	d = {int(k):int(v) for k,v in lengthFreqDict[key].items()}
-	print "d:"
-	print d
-	# clear plotting history
-	plt.clf() 
-	pos = np.arange(len(d.keys()))
-	print "pos:"
-	print pos
-	# define axes labels
-	ax = plt.axes()
-	#ax.set_xticks(pos + (width / 2))
-	#ax.set_xticklabels(lengthFreqDict[key].keys())
-	ax.set_xlabel('lengths for CIGAR letter ' + key + ": " + CIGAR_letter_dict[key])
-	ax.set_ylabel('frequency across reads')
-	ax.set_title('length for flag ' + key +  ' in CIGARS')
-	print "d.keys():"
-	print d.keys()
-	min_bin = np.min(d.keys()) # doesn't work if all values are 0? 
-	max_bin = np.max(d.keys())
-	bins = np.arange(min_bin, max_bin + 1)
-	vals = np.zeros(max_bin - min_bin + 1)
-	for k,v in d.items():
-		vals[k - min_bin] = v
-	print bins
-	print vals
-	# generate plot
-	plt.bar(bins, vals)
-	plt.savefig(plot_dir + "lengthFreq-"+key+ ".pdf", dpi=None, facecolor='w', edgecolor='w',
-		transparent=True, bbox_inches=None, pad_inches=0.1,
-		frameon=None)
+    print "lengthFreqDict[key].items()" 
+    print lengthFreqDict[key].items()
+    d = {int(k):int(v) for k,v in lengthFreqDict[key].items()}
+    print "d:"
+    print d
+    # clear plotting history
+    plt.clf() 
+    pos = np.arange(len(d.keys()))
+    print "pos:"
+    print pos
+    # define axes labels
+    ax = plt.axes()
+    #ax.set_xticks(pos + (width / 2))
+    #ax.set_xticklabels(lengthFreqDict[key].keys())
+    ax.set_xlabel('lengths for CIGAR letter ' + key + ": " + CIGAR_letter_dict[key])
+    ax.set_ylabel('frequency across reads')
+    ax.set_title('length for flag ' + key +  ' in CIGARS')
+    print "d.keys():"
+    print d.keys()
+    min_bin = np.min(d.keys()) # doesn't work if all values are 0? 
+    max_bin = np.max(d.keys())
+    bins = np.arange(min_bin, max_bin + 1)
+    vals = np.zeros(max_bin - min_bin + 1)
+    for k,v in d.items():
+        vals[k - min_bin] = v
+    print bins
+    print vals
+    # generate plot
+    plt.bar(bins, vals)
+    plt.savefig(plot_dir + "lengthFreq-"+key+ ".pdf", dpi=None, facecolor='w', edgecolor='w',
+        transparent=True, bbox_inches=None, pad_inches=0.1,
+        frameon=None)
 
 
 # plot frequency of lengths specified by CIGAR string letters, across all reads.  Note that 
 for key in lengthFreqDict.keys():
-	print key
-	print lengthFreqDict[key]
-	if lengthFreqDict[key]:  # dict is False if empty.
-		plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
+    print key
+    print lengthFreqDict[key]
+    if lengthFreqDict[key]:  # dict is False if empty.
+        plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
