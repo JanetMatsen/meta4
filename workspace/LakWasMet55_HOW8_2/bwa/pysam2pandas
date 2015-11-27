@@ -26,7 +26,8 @@ def props(obj):
     return pr
 
 inputFile = "LakWasMet55_HOW8_2.sorted.bam"
-inputFile = "LakWasMet55_HOW8_2.sorted.100k.sam"
+#inputFile = "LakWasMet55_HOW8_2.sorted.100k.sam"
+print "input file: " + inputFile
 
 # Conversion between pysam's numericl cigar values & letter form.
 operationInt2StrDict = { 0 : 'M', 1 : 'I', 2 : 'D', 3 : 'N', 4 : 'S', 5 : 'H', 6 : 'P', 7 : '=', 8 : 'X' }
@@ -44,7 +45,10 @@ class Scaffold:
         self.lengthFreqDict = { 'M' : {}, 'I' : {}, 'D' : {}, 'N' : {}, 'S' : {}, 'H' : {}, 'P' : {}, 'X' : {}, '=' : {} }
         self.operationFreqDict = { 'M' : 0, 'I' : 0, 'D' : 0, 'N' : 0, 'S' : 0, 'H' : 0, 'P' : 0, 'X' : 0, '=' : 0 }
         self.mappingQualDict = { }
+        self.readsMapped = 0
     def include_cigar_stats(self,read):
+        # add 1 count if read mapped
+        self.readsMapped += 1
         # Add a count to operationFreqDict for each piece of information in the CIGAR. 
         for operation in read.cigartuples:  # uses pysam
             # convert from numerical CIGAR codes to the letters
@@ -98,20 +102,6 @@ print("Found {0:d} total reads of which {1:d} were unmapped".format(totalReads, 
 
 #print(pd.DataFrame.from_dict(scaffolds))
 
-for s in scaffoldsDict.keys():
-    if s == "NC_012968":
-        print s
-        #print scaffoldsDict.keys()
-        #print scaffoldsDict.values()
-        print scaffoldsDict[s]
-
-
-# Set some plotting parameters.
-# Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
-plt.figure(figsize=(6,4))
-# Prevent the x-labels from cutting off.
-# http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
-plt.gcf().subplots_adjust(bottom=0.15)
 
 # Some nice colors
 # http://www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/
@@ -136,6 +126,12 @@ if not os.path.exists(plot_dir):
     os.makedirs(plot_dir, 0755)
 
 def plot_element_frequencies(scaffold, plot_dir):
+    # Set some plotting parameters.
+    # Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
+    plt.figure(figsize=(6,4))
+    # Prevent the x-labels from cutting off.
+    # http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
+    plt.gcf().subplots_adjust(bottom=0.15)
     # clear plotting history
     plt.clf()
     pos = np.arange(len(scaffold.operationFreqDict.keys()))
@@ -167,14 +163,24 @@ def plot_element_frequencies(scaffold, plot_dir):
         transparent=True, bbox_inches=None, pad_inches=0.1,
         frameon=None)
 
-plot_element_frequencies(scaffoldsDict["NC_012968"], plot_dir = plot_dir)
+#plot_element_frequencies(scaffoldsDict["NC_012968"], plot_dir = plot_dir)
 
-def plot_element_length_distribution(scaffold, element, plot_dir):
+def plot_element_length_distribution(scaffold, element, plot_dir, fraction=True):
+    # Set some plotting parameters.
+    # Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
+    plt.figure(figsize=(6.5,4))
+    # Prevent the x-labels from cutting off.
+    # http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
+    plt.gcf().subplots_adjust(bottom=0.15, left = 0.15)
     # prepare data
     # clear plotting history
     plt.clf()
     # make sure they are all integers
     d = {int(k):int(v) for k,v in scaffold.lengthFreqDict[element].items()}
+    # if plotting fraction of reads with that length appearing:
+    if fraction:
+        for key, value in d.items():
+            d[key] = float(value) / scaffold.readsMapped
     # Remove the plot frame lines. They are unnecessary chartjunk.   
     ax = plt.axes()
     ax.spines["top"].set_visible(False)    
@@ -185,137 +191,51 @@ def plot_element_length_distribution(scaffold, element, plot_dir):
     # Ticks on the right and top of the plot are generally unnecessary chartjunk.    
     ax.get_xaxis().tick_bottom()    
     ax.get_yaxis().tick_left()
-    # overwrite the default y-ticks.  They go too far up the plot.
-    high_y = max(scaffold.lengthFreqDict[element].values())
-    low_y = 0
-    plt.ylim([low_y, np.ceil(high_y)]) #+0.1*(high_y-low_y))])
+    ## overwrite the default y-ticks.  They go too far up the plot.
+    #high_y = max(d.values())
+    #low_y = 0
+    #plt.ylim([low_y, np.ceil(high_y)]) #+0.1*(high_y-low_y))])
+    #print "y limits:"
+    #print [low_y, np.ceil(high_y)]
     # set labels and title
-    ax.set_xlabel('lengths for CIGAR letter ' + element + ": " + CIGAR_letter_dict[element])
-    ax.set_ylabel('frequency across reads')
+    ax.set_xlabel('frequencies of ' + element + ": " + CIGAR_letter_dict[element])
+    if fraction: 
+        ax.set_ylabel('# of occurances/# of reads')
+    else:
+        ax.set_ylabel('frequency across reads')
     ax.set_title("distribution of cigar element lengths: " + scaffold.name)
     # generate plot
-    min_bin = np.min(d.keys()) 
+    min_bin = 1 # np.min(d.keys()) 
     max_bin = np.max(d.keys()) 
     bins = np.arange(min_bin, max_bin + 1)
+    width = 1
+    # adjust bins so there is one per x-axis integer.
+    bins=np.arange(bins.min(), bins.max()+1) -width/2
     vals = np.zeros(max_bin - min_bin + 1)
     for k,v in d.items(): 
             vals[k - min_bin] = v
     # generate plot
-    plt.bar(bins, vals, color=tableau['blue'], edgecolor='none')
-    plt.savefig(plot_dir + "elementLenDist_" + scaffold.name + ".pdf", dpi=None, facecolor='w', edgecolor='w',
+    plt.bar(bins, vals, width=width, color=tableau['blue'], edgecolor='none')
+    plt.savefig(plot_dir + "elementLenDict_" + scaffold.name + "_" + element + ".pdf", dpi=None, facecolor='w', edgecolor='w',
         transparent=True, bbox_inches=None, pad_inches=0.1,
         frameon=None)
 
-plot_element_length_distribution(scaffoldsDict["NC_012968"], plot_dir = plot_dir, element='S')
+# plot_element_length_distribution(scaffoldsDict["NC_012968"], plot_dir = plot_dir, element='S')
 
-quit()
-######################################################
-######################################################
-######################################################
-######################################################
-######################################################
-######################################################
-
-# per element histogram
-print("Frequency of lengths for each element type:")
-for elementType in lengthFreqDict.keys():
-    print("{0:s}:".format(elementType))
-    # return the lengths in the dictionary after mapping each element of keys
-    # to an integer and sorting the list
-    for lenKey in sorted(map(int, lengthFreqDict[elementType].keys())):
-        # print out the line, not the conversion from integer 
-        #  which is what lenKey is to string which is what required for dict access
-        print("\t{0:d}\t{1:d}".format(lenKey, lengthFreqDict[elementType][str(lenKey)]))
+print " Make plots for each scaffold." 
+# Make plots for each scaffold.  
+for scaffold in scaffoldsDict.values():
+    # only plot if had > 1 read
+    if scaffold.readsMapped > 0:
+    # make a directory for that scaffold
+        plot_dir = "./cigarPlotsStratified/" + scaffold.name + "/"
+        if not os.path.exists(plot_dir):
+            os.makedirs(plot_dir, 0755)
+        plot_element_frequencies(scaffold, plot_dir=plot_dir)
+        # loop over elements in CIGAR (e.g. M, H, S, ...)
+        for element in scaffold.lengthFreqDict.keys():
+            # can't do it unless one value is > 0
+            if len(scaffold.lengthFreqDict[element]) > 0:
+                plot_element_length_distribution(scaffold, plot_dir=plot_dir, element=element, fraction=True)
 
 
-tmp=pd.DataFrame.from_dict(lengthFreqDict)
-print(tmp)
-
-quit()
-
-# Set some plotting parameters.
-# Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
-plt.figure(figsize=(6,4))
-# Prevent the x-labels from cutting off.
-# http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
-plt.gcf().subplots_adjust(bottom=0.15)
-
-# make dir for all figures
-plot_dir = "./parse_CIGAR_plots/"
-if not os.path.exists(plot_dir):
-    os.makedirs(plot_dir, 0755)
-
-# generate plot for frequency of each CIGAR letter's appearance across reads. 
-# http://stackoverflow.com/questions/5926061/plot-histogram-in-python
-pos = np.arange(len(elementFreqDict.keys()))
-width = 1.0     # gives histogram aspect to the bar diagram
-ax = plt.axes()
-ax.set_xticks(pos + (width / 2))
-ax.set_xticklabels(elementFreqDict.keys())
-
-print(elementFreqDict.keys())
-print(elementFreqDict.values())
-ax.set_xlabel('CIGAR letter')
-ax.set_ylabel('frequency across reads')
-ax.set_title('CIGAR fequencies: BWA')
-# generate plot
-plt.bar(pos, elementFreqDict.values(), width, color='g')
-plt.savefig(plot_dir + "elementFreq.pdf", dpi=None, facecolor='w', edgecolor='w',
-        transparent=True, bbox_inches=None, pad_inches=0.1,
-        frameon=None)
-
-# A dict to tell you what CIGAR letters mean.
-# http://seqanswers.com/forums/showthread.php?t=4882
-CIGAR_letter_dict = {'M': 'match or mismatch', 
-            'I' : 'insertion', 
-            'D': 'deletion',
-            # The extended cigar adds
-            'N' : 'skipped bases on reference',
-            'S' : 'soft clipping',
-            'H' : 'hard clipping',
-            'P' : 'padding' }
-
-
-# Function for plotting frequency of regions specified by CIGAR strings.
-print "use plot_freq_for_cigar_val(key)"
-def plot_freq_for_cigar_val(key, plot_dir):
-    print "lengthFreqDict[key].items()" 
-    print lengthFreqDict[key].items()
-    d = {int(k):int(v) for k,v in lengthFreqDict[key].items()}
-    print "d:"
-    print d
-    # clear plotting history
-    plt.clf() 
-    pos = np.arange(len(d.keys()))
-    print "pos:"
-    print pos
-    # define axes labels
-    ax = plt.axes()
-    #ax.set_xticks(pos + (width / 2))
-    #ax.set_xticklabels(lengthFreqDict[key].keys())
-    ax.set_xlabel('lengths for CIGAR letter ' + key + ": " + CIGAR_letter_dict[key])
-    ax.set_ylabel('frequency across reads')
-    ax.set_title('length for flag ' + key +  ' in CIGARS')
-    print "d.keys():"
-    print d.keys()
-    min_bin = np.min(d.keys()) # doesn't work if all values are 0? 
-    max_bin = np.max(d.keys())
-    bins = np.arange(min_bin, max_bin + 1)
-    vals = np.zeros(max_bin - min_bin + 1)
-    for k,v in d.items():
-        vals[k - min_bin] = v
-    print bins
-    print vals
-    # generate plot
-    plt.bar(bins, vals)
-    plt.savefig(plot_dir + "lengthFreq-"+key+ ".pdf", dpi=None, facecolor='w', edgecolor='w',
-        transparent=True, bbox_inches=None, pad_inches=0.1,
-        frameon=None)
-
-
-# plot frequency of lengths specified by CIGAR string letters, across all reads.  Note that 
-for key in lengthFreqDict.keys():
-    print key
-    print lengthFreqDict[key]
-    if lengthFreqDict[key]:  # dict is False if empty.
-        plot_freq_for_cigar_val(key=key, plot_dir=plot_dir)
