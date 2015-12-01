@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#PBS -N "LakWasMet55_HOW8_2_aln"
+#PBS -d /gscratch/lidstrom/meta4/workspace/LakWasMet55_HOW8_2/bwa
+#PBS -l walltime=999:99:99,mem=2gb,feature=8core,nodes=1:ppn=8
+#PBS -W umask=002, group_list=hyak-lidstrom
+#PBS -M jmatsen@uw.edu #dacb@uw.edu,
+#PBS -m abe
+#PBS -o subsample.log
+#PBS -e subsample.err
+
+# Sample 1% of the existing BAM to have a new test data set
+/gscratch/lidstrom/software/samtools/bin/samtools view -h -s 0.01 LakWasMet55_HOW8_2.sorted.bam > LakWasMet55_HOW8_2.sorted.1percent.sam
+# s: subsample
+# h: include header
+
