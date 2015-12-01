@@ -96,13 +96,6 @@ for read in bamFile.fetch(until_eof=True):
 # output
 print("Found {0:d} total reads of which {1:d} were unmapped".format(totalReads, unmappedReads))
 
-#scaffolds = { }
-#for scaffold in scaffoldsDict.keys():
-#    scaffolds[scaffold] = props(scaffoldsDict[scaffold])
-
-#print(pd.DataFrame.from_dict(scaffolds))
-
-
 # Some nice colors
 # http://www.randalolson.com/2014/06/28/how-to-make-beautiful-data-visualizations-in-python-with-matplotlib/
 tableau20 = [(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),    
@@ -161,7 +154,7 @@ def plot_element_frequencies(scaffold, plot_dir):
     ax.set_title("frequency of cigar letters: " + scaffold.name)
     # generate plot
     plt.bar(pos, scaffold.operationFreqDict.values(), width, color=tableau['light green'])
-    plt.savefig(plot_dir + "elementFreq_" + scaffold.name + ".pdf", dpi=None, facecolor='w', edgecolor='w',
+    plt.savefig(plot_dir + "elementFreq_" + filename_sanitizer(scaffold.name) + ".pdf", dpi=None, facecolor='w', edgecolor='w',
         transparent=True, bbox_inches=None, pad_inches=0.1,
         frameon=None)
 
@@ -245,29 +238,67 @@ def plot_element_length_distribution(scaffold, element, plot_dir, fraction=True)
 # Make a dataframe that summarizes the count frequencies across scaffolds. 
 dfs = []  # a list that I will add DataFrames to
 
+# Make the pandas DataFrame
 # loop over the keys and make a pd.DataFrame for each in the dfs list.
 for s_name, scaf in scaffoldsDict.items():
     print "for key " + s_name
     dfa = pd.DataFrame.from_dict(scaf.lengthFreqDict, orient='columns')
+    # set index name on the array
+    dfa.index.name = 'length'
+    # add a scaffold name column
     dfa['scaffold'] = s_name
     print "df to add: " 
     dfs.append(dfa)
 df = pd.concat(dfs)
-df.to_csv()
+# Rows like: 
+#          =   D   H   I   M   N   P   S   X                 scaffold
+#length
+#4      NaN NaN NaN NaN NaN NaN NaN   1 NaN  MetLW4DRAFT_scaffold2.2
 
+# Make scaffold an index.  Now the only non-index columns are data. 
 df.set_index(keys = "scaffold", inplace=True, append=True)
-print df
 
+# Add on the user-friendly scaffold names
+# read in the scaffold names
+ids = pd.read_csv("/gscratch/lidstrom/meta4/data/isolate_genomes.locus_to_organism.tsv", sep='\t', names=['scaffold', 'organism'])
+ids.set_index('scaffold', inplace=True)
+# Merge the ids on
+df = df.join(ids, how='outer')
+df.set_index('organism', inplace=True, append=True)
+
+# Save a copy
 df.to_csv("./cigar_length_frequencies.csv")
+
+def filename_sanitizer(name):
+    ''' Remove illegal characters and replace space with _'''
+    subs = {" ":"_", '.':'', '/':'-'}
+    for char in subs.keys():
+        name = name.replace(char, subs[char])
+    return name 
 
 def plot_cig_freq_dist(dframe, scaffold, plot_dir):
     plt.clf()
     plt.close()
-    dframe = df.xs(scaffold, level='scaffold')
+    dframe = df.xs(scaffold, level='scaffold') #, drop_level=False)
 
     # set up x axis to include every integer in range
     # Insert missing idex rows.  All columns should have Na as value.
-    dframe = pd.DataFrame({'length':range(0, dframe.index.max())}).join(dframe)
+    #me.index.labels) maximum length (maximum x value)
+    max_length = 151 # was: dframe.index.max()
+    # check that there is only one organism name in this subset DataFrame
+    try:
+        dframe.index.get_level_values('organism').unique()==dframe.index.get_level_values('organism').unique()[0]
+    except AssertionError:
+        "organism name not unique"
+    # get organism name
+    organism = dframe.index.get_level_values('organism')[0]
+
+    # merge onto a dframe with length 151: the max read length
+    df_all_rows = pd.DataFrame({'length':range(1, 151), 'organism':organism})
+    dframe = df_all_rows.merge(dframe, how='outer', left_on=['length','organism'], right_index=['length','organism'] )
+    # turn length, organism columns back into indices
+    dframe.set_index(['length','organism'], append=True, inplace=True)
+
     # plot it
     fig, ax = plt.subplots(3, sharex=True)
     dframe[['M']].plot(ax=ax[0], kind='bar', edgecolor='none', grid=False, color=tableau['blue']); ax[0].set_title('Matches (sequence match or mismatch)')
@@ -296,20 +327,29 @@ def plot_cig_freq_dist(dframe, scaffold, plot_dir):
         a.yaxis.set_major_locator( matplotlib.ticker.MaxNLocator(integer=True, nbins=3) )
 
     # make a set of x ticks so not every x is used
-    xt = range(0, dframe.index.max(), 10)
+    xt = range(0, 151, 10) #maxlength
     plt.xticks(xt, xt, fontsize=14) # set the x tick positions and labels.
 
     # Add title
-    fig.suptitle(scaffold, fontsize=16, fontweight='bold')
+    ax[-1].set_xlabel("length seen", fontsize = 18)
+    ax[1].set_ylabel("freqnency of length", fontsize = 18)
+    fig.suptitle(organism, fontsize=16, fontweight='bold')
+    # prevent plot's x-axis from being cut off
+    plt.gcf().subplots_adjust(bottom=0.15)
 
     # To get ahold of the plot, get the figure correponding to any 1 object.  Now you have all 6.
     fig = ax[0].get_figure()
+    # sanitize scaffold name
+    print "scaffold name: "
+    scaffold_name = filename_sanitizer(scaffold)
+    print scaffold_name
     # save figure
-    filepath = plot_dir + "CIGAR_freq_" + scaffold + ".pdf"
+    filepath = plot_dir + "CIGAR_freq_" + filename_sanitizer(organism) + '_'+ scaffold_name + ".pdf"
     print filepath
     fig.savefig(filepath)
 
 # make dir for all figures
+plot_dir = "./parse_CIGAR_plots--stratified_test/"
 plot_dir = "./parse_CIGAR_plots--stratified/"
 if not os.path.exists(plot_dir):
     os.makedirs(plot_dir, 0755)
