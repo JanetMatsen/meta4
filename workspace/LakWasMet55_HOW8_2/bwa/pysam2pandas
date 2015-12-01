@@ -26,7 +26,7 @@ def props(obj):
     return pr
 
 inputFile = "LakWasMet55_HOW8_2.sorted.bam"
-#inputFile = "LakWasMet55_HOW8_2.sorted.100k.sam"
+#inputFile="LakWasMet55_HOW8_2.sorted.1percent.sam"
 print "input file: " + inputFile
 
 # Conversion between pysam's numericl cigar values & letter form.
@@ -115,7 +115,9 @@ for i in range(len(tableau20)):
     r, g, b = tableau20[i]    
     tableau20[i] = (r / 255., g / 255., b / 255.)  
 # a few J likes from http://tableaufriction.blogspot.ro/2012/11/finally-you-can-use-tableau-data-colors.html
-tableau = {"blue":(31, 119, 180), "green":(48, 147,67), "light green":(103,191,92), "orange":(255,127,14), "purple":(148,103,189)}
+tableau = {"blue":(31, 119, 180), "green":(48, 147,67), "light green":(103,191,92), \
+    "orange":(255,127,14), "purple":(148,103,189), 'pink':(227,119,194), \
+    "l pink":(247,182,210), "brown":(140,86,75), "teal":(23,190,207)}
 for key in tableau.keys():
     r, g, b = tableau[key]
     tableau[key] = (r / 255., g / 255., b / 255.)
@@ -126,14 +128,14 @@ if not os.path.exists(plot_dir):
     os.makedirs(plot_dir, 0755)
 
 def plot_element_frequencies(scaffold, plot_dir):
+    # clear plotting history
+    plt.clf()
     # Set some plotting parameters.
     # Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
     plt.figure(figsize=(6,4))
     # Prevent the x-labels from cutting off.
     # http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
     plt.gcf().subplots_adjust(bottom=0.15)
-    # clear plotting history
-    plt.clf()
     pos = np.arange(len(scaffold.operationFreqDict.keys()))
         # arange([start,] stop[, step,], dtype=None)
         # Return evenly spaced values within a given interval.
@@ -166,6 +168,8 @@ def plot_element_frequencies(scaffold, plot_dir):
 #plot_element_frequencies(scaffoldsDict["NC_012968"], plot_dir = plot_dir)
 
 def plot_element_length_distribution(scaffold, element, plot_dir, fraction=True):
+    # clear plotting history
+    plt.clf()
     # Set some plotting parameters.
     # Make the figure size smaller so the text isn't tiny.   http://matplotlib.org/api/figure_api.html
     plt.figure(figsize=(6.5,4))
@@ -173,8 +177,6 @@ def plot_element_length_distribution(scaffold, element, plot_dir, fraction=True)
     # http://stackoverflow.com/questions/6774086/why-is-my-xlabel-cut-off-in-my-matplotlib-plot
     plt.gcf().subplots_adjust(bottom=0.15, left = 0.15)
     # prepare data
-    # clear plotting history
-    plt.clf()
     # make sure they are all integers
     d = {int(k):int(v) for k,v in scaffold.lengthFreqDict[element].items()}
     # if plotting fraction of reads with that length appearing:
@@ -222,20 +224,101 @@ def plot_element_length_distribution(scaffold, element, plot_dir, fraction=True)
 
 # plot_element_length_distribution(scaffoldsDict["NC_012968"], plot_dir = plot_dir, element='S')
 
-print " Make plots for each scaffold." 
-# Make plots for each scaffold.  
-for scaffold in scaffoldsDict.values():
-    # only plot if had > 1 read
-    if scaffold.readsMapped > 0:
-    # make a directory for that scaffold
-        plot_dir = "./cigarPlotsStratified/" + scaffold.name + "/"
-        if not os.path.exists(plot_dir):
-            os.makedirs(plot_dir, 0755)
-        plot_element_frequencies(scaffold, plot_dir=plot_dir)
-        # loop over elements in CIGAR (e.g. M, H, S, ...)
-        for element in scaffold.lengthFreqDict.keys():
-            # can't do it unless one value is > 0
-            if len(scaffold.lengthFreqDict[element]) > 0:
-                plot_element_length_distribution(scaffold, plot_dir=plot_dir, element=element, fraction=True)
+#print " Make plots for each scaffold." 
+## Make plots for each scaffold.  
+#for scaffold in scaffoldsDict.values():
+#    # only plot if had > 1 read
+#    if scaffold.readsMapped > 0:
+#    # make a directory for that scaffold
+#        plot_dir = "./cigarPlotsStratified/" + scaffold.name + "/"
+#        if not os.path.exists(plot_dir):
+#            os.makedirs(plot_dir, 0755)
+#        plot_element_frequencies(scaffold, plot_dir=plot_dir)
+#        # loop over elements in CIGAR (e.g. M, H, S, ...)
+#        for element in scaffold.lengthFreqDict.keys():
+#            # can't do it unless one value is > 0
+#            if len(scaffold.lengthFreqDict[element]) > 0:
+#                plot_element_length_distribution(scaffold, plot_dir=plot_dir, element=element, fraction=True)
+
+# Make a pandas data frame.  Index 1 = organism.  Index 2 = frequency.  Columns = CIGAR letters.  Values = frequency of length.
+
+# Make a dataframe that summarizes the count frequencies across scaffolds. 
+dfs = []  # a list that I will add DataFrames to
+
+# loop over the keys and make a pd.DataFrame for each in the dfs list.
+for s_name, scaf in scaffoldsDict.items():
+    print "for key " + s_name
+    dfa = pd.DataFrame.from_dict(scaf.lengthFreqDict, orient='columns')
+    dfa['scaffold'] = s_name
+    print "df to add: " 
+    dfs.append(dfa)
+df = pd.concat(dfs)
+df.to_csv()
+
+df.set_index(keys = "scaffold", inplace=True, append=True)
+print df
+
+df.to_csv("./cigar_length_frequencies.csv")
+
+def plot_cig_freq_dist(dframe, scaffold, plot_dir):
+    plt.clf()
+    plt.close()
+    dframe = df.xs(scaffold, level='scaffold')
+
+    # set up x axis to include every integer in range
+    # Insert missing idex rows.  All columns should have Na as value.
+    dframe = pd.DataFrame({'length':range(0, dframe.index.max())}).join(dframe)
+    # plot it
+    fig, ax = plt.subplots(3, sharex=True)
+    dframe[['M']].plot(ax=ax[0], kind='bar', edgecolor='none', grid=False, color=tableau['blue']); ax[0].set_title('Matches (sequence match or mismatch)')
+    dframe[['H', 'S']].plot(ax=ax[1], kind='bar', edgecolor='none',  grid=False, color=[tableau['green'], tableau['purple']]); ax[1].set_title('(H)ard clip, (S)oft clip')
+    dframe[['I', 'D']].plot(ax=ax[2], kind='bar', edgecolor='none', grid=False, color=[tableau['pink'],tableau['teal']]); ax[2].set_title('(I)ns, (D)el')
+
+    # Not plotting N and P for now.
+    #dframe[['N', 'P']].plot(ax=ax[2], kind='bar', edgecolor='none',  grid=False); ax[2].set_title('N: Skipped reference, (P)adding')
+
+    # remove the boxes and ticks on the right and top of each plot
+    for a in ax:
+        # no spines on top and right
+        a.spines['top'].set_visible(False)
+        a.spines['right'].set_visible(False)
+        # no ticks on top and right
+        a.yaxis.set_ticks_position('left')
+        a.xaxis.set_ticks_position('bottom')
+        #loc = matplotlib.ticker.MultipleLocator(base=1.0) # this locator puts ticks at regular intervals
+        #a.yaxis.set_major_locator(loc)
+
+        #Be sure to only pick integer tick locations.
+        #a.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True, prune='upper'))
+        #ax.set_major_locator(ticker.MaxNLocator(integer=True))
+
+        # limit y axis to having integer laels
+        a.yaxis.set_major_locator( matplotlib.ticker.MaxNLocator(integer=True, nbins=3) )
+
+    # make a set of x ticks so not every x is used
+    xt = range(0, dframe.index.max(), 10)
+    plt.xticks(xt, xt, fontsize=14) # set the x tick positions and labels.
+
+    # Add title
+    fig.suptitle(scaffold, fontsize=16, fontweight='bold')
+
+    # To get ahold of the plot, get the figure correponding to any 1 object.  Now you have all 6.
+    fig = ax[0].get_figure()
+    # save figure
+    filepath = plot_dir + "CIGAR_freq_" + scaffold + ".pdf"
+    print filepath
+    fig.savefig(filepath)
+
+# make dir for all figures
+plot_dir = "./parse_CIGAR_plots--stratified/"
+if not os.path.exists(plot_dir):
+    os.makedirs(plot_dir, 0755)
+
+#plot_cig_freq_dist(df, scaffold='MetLW4DRAFT_scaffold2.2', plot_dir=plot_dir)
+
+for scaf_name in df.index.get_level_values('scaffold').unique():
+    print "plot " + scaf_name
+    plot_cig_freq_dist(df, scaffold=scaf_name, plot_dir=plot_dir)
+
 
 
