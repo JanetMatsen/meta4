@@ -5,11 +5,11 @@ DB=meta4
 HOST=`mysql_host`
 
 # pathes
-BWA=/gscratch/esci/dacb/bwa/bin/bwa
-SAMTOOLS=/gscratch/esci/dacb/samtools/bin/samtools
+BWA=/gscratch/lidstrom/software/bwa/bin/bwa
+SAMTOOLS=/gscratch/lidstrom/software/samtools/bin/samtools
 MYSQL=mysql
 MYSQL_HOST=/gscratch/esci/dacb/mysql/bin/mysql_host
-HTSEQ_COUNT=/gscratch/esci/dacb/htseq/bin/htseq-count
+HTSEQ_COUNT=/gscratch/lidstrom/software/htseq/bin/htseq-count
 
 # job parameters
 QL=walltime=999:99:99,mem=2gb,feature=8core
