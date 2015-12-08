@@ -11,9 +11,7 @@ CREATE TABLE sample_info (
 		VARCHAR(32),
 	bior    INTEGER NOT NULL,
 	techr   INTEGER NOT NULL,
-	path_to_FASTQ_R1
-		VARCHAR(256),
-	path_to_FASTQ_R2
+	path_to_FASTQ
 		VARCHAR(256),
 	read_length	INTEGER,
 	path_to_genome_FASTA
