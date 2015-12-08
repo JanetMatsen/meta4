@@ -11,8 +11,7 @@ then
 fi
 
 sample=$1
-fastq_R1=`echo "SELECT path_to_FASTQ_R1 FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
-fastq_R2=`echo "SELECT path_to_FASTQ_R1 FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
+fastq=`echo "SELECT path_to_FASTQ FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
 genome_fasta=`echo "SELECT path_to_genome_fasta FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
 proteome_fasta=`echo "SELECT path_to_proteome_fasta FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
 read_length=`echo "SELECT read_length FROM sample_info WHERE sample='$sample';" | mysql -s -h $HOST $DB`
@@ -45,13 +44,14 @@ cat << EOF > aln
 #PBS -N "${sample}_aln"
 #PBS -d $dir/bwa
 #PBS -l $QL,nodes=1:ppn=8
-#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -W umask=002
+#PBS -W group_list=$GROUP_LIST
 #PBS -M $EMAIL
 #PBS -m abe
 #PBS -o aln.log
 #PBS -e aln.err
 
-$BWA mem -M -t 8 $genome_fasta $fastq_R1 $fastq_R2 > $sample.sam
+$BWA mem -p -M -t 8 $genome_fasta $fastq > $sample.sam
 EOF
 chmod +x aln
 
@@ -61,7 +61,8 @@ cat << EOF > samtools
 #PBS -N "${sample}_samtools"
 #PBS -d $dir/bwa
 #PBS -l $QL,nodes=1:ppn=8
-#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -W umask=002
+#PBS -W group_list=$GROUP_LIST
 #PBS -M $EMAIL
 #PBS -m abe
 #PBS -o samtools.log
@@ -103,7 +104,8 @@ cat << EOF > database
 #PBS -N "${sample}_database"
 #PBS -d $dir/bwa
 #PBS -l $QL,nodes=1:ppn=8
-#PBS -W umask=002, group_list=$GROUP_LIST
+#PBS -W umask=002
+#PBS -W group_list=$GROUP_LIST
 #PBS -M $EMAIL
 #PBS -m abe
 #PBS -o database.log
