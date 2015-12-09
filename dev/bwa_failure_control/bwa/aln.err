@@ -1,0 +1,2 @@
+[M::bwa_idx_load_from_disk] read 0 ALT contigs
+[E::main_mem] fail to open file `/gscratch/lidstrom/meta4/data/LakWasMeta9_HOW4_2/Raw_Data/8904.1.115212.GATCAG.fastq.gz'.

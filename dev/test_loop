@@ -1,0 +1,13 @@
+SAMPLES=`awk -F'\t' '{if (NR!=1) print $1 }' /gscratch/lidstrom/meta4/analysis/sample_info.xls`
+echo $SAMPLES
+
+# /gscratch/lidstrom/meta4/workspace/LakWasM100_LOW12_2/ --> 8777.2.112196.ATCCTA.fastq.gz  bwa  isolate_genomes.fasta  isolate_genomes.gbk.gff
+REMOTE_ROOT=/gscratch/lidstrom/meta4
+
+for sample in $SAMPLES; do
+        path=$REMOTE_ROOT"/workspace/"$sample"/bwa/"
+        if test -f $path"/aln"; then echo "correct dir found";fi
+        if test -f $path"/aln.log"; then echo "aln log file exists";fi
+        if test -f $path"/samtools.log"; then echo "database log exists";fi
+        if test -f $path"/database.log"; then echo "database log exists";fi
+done
