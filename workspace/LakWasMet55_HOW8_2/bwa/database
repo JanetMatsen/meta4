@@ -3,11 +3,12 @@
 #PBS -N "LakWasMet55_HOW8_2_database"
 #PBS -d /gscratch/lidstrom/meta4/workspace/LakWasMet55_HOW8_2/bwa
 #PBS -l walltime=999:99:99,mem=2gb,feature=8core,nodes=1:ppn=8
-#PBS -W umask=002, group_list=hyak-lidstrom
+#PBS -W umask=002
+#PBS -W group_list=hyak-lidstrom
 #PBS -M dacb@uw.edu,jmatsen@uw.edu
 #PBS -m abe
 #PBS -o database.log
 #PBS -e database.err
 
-mysql -h n0002m meta4 < database.sql
+mysql -h n0327m meta4 < database.sql
 \rm -r LakWasMet55_HOW8_2.sam

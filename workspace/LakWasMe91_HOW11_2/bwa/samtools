@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#PBS -N "LakWasMe91_HOW11_2_samtools"
+#PBS -d /gscratch/lidstrom/meta4/workspace/LakWasMe91_HOW11_2/bwa
+#PBS -l walltime=999:99:99,mem=2gb,feature=8core,nodes=1:ppn=8
+#PBS -W umask=002
+#PBS -W group_list=hyak-lidstrom
+#PBS -M dacb@uw.edu,jmatsen@uw.edu
+#PBS -m abe
+#PBS -o samtools.log
+#PBS -e samtools.err
+
+/gscratch/lidstrom/software/samtools/bin/samtools view -bt /gscratch/lidstrom/meta4/data/isolate_genomes.fasta -o LakWasMe91_HOW11_2.bam LakWasMe91_HOW11_2.sam
+/gscratch/lidstrom/software/samtools/bin/samtools sort LakWasMe91_HOW11_2.bam LakWasMe91_HOW11_2.sorted
+/gscratch/lidstrom/software/samtools/bin/samtools index LakWasMe91_HOW11_2.sorted.bam
+/gscratch/lidstrom/software/htseq/bin/htseq-count -m intersection-nonempty -s no -t gene -i ID LakWasMe91_HOW11_2.sam /gscratch/lidstrom/meta4/data/isolate_genomes.gbk.gff > LakWasMe91_HOW11_2.summary.dat
+\rm -r LakWasMe91_HOW11_2.bam
