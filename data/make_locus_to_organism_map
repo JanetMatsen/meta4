@@ -1,0 +1,19 @@
+#!/bin/bash
+
+HOST=`mysql_host`
+DB=meta4
+
+infile=isolate_genomes.gbk
+outfile=isolate_genomes.locus_to_organism.tsv
+
+awk '{ if ($1 == "LOCUS") locus=$2; else if ($1 == "ORGANISM") { organism = $2; printf("%s\t%s %s %s\n", locus, organism, $3, $4); } }' $infile > $outfile
+
+mysql -h $HOST $DB --local-infile << EOF
+DROP TABLE IF EXISTS map_locus_to_organism;
+CREATE TABLE map_locus_to_organism (
+	locus	VARCHAR(256),
+	genome	VARCHAR(256)
+);
+
+LOAD DATA LOCAL INFILE '`pwd`/$outfile' INTO TABLE map_locus_to_organism FIELDS TERMINATED BY '\t';
+EOF
