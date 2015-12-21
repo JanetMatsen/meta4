@@ -5,7 +5,7 @@ source globals.sh
 HERE=`pwd`
 
 mysql -h $HOST --local-infile $DB << EOF
-LOAD DATA INFILE "$HERE/sample_info.xls" INTO TABLE sample_info FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
+LOAD DATA LOCAL INFILE "$HERE/sample_info.xls" INTO TABLE sample_info FIELDS TERMINATED BY '\t' IGNORE 1 LINES;
 EOF
 
 echo "SELECT * FROM sample_info;" | mysql -h $HOST $DB
