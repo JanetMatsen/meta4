@@ -27,7 +27,9 @@ CREATE TABLE sample_info (
 	path_to_alignment
 		VARCHAR(256),
 	path_to_workspace
-		VARCHAR(256)
+		VARCHAR(256),
+	week INTEGER NOT NULL,
+	O2 VARCHAR(4) NOT NULL
 );
 DROP INDEX locus_start_end ON genes_isolate_genomes;
 CREATE INDEX locus_start_end ON genes_isolate_genomes (locus,start_coord,end_coord);
