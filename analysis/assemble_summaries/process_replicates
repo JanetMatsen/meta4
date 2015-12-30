@@ -1,0 +1,83 @@
+#!/bin/bash
+
+source ../globals.sh
+
+SQL=$0.sql
+
+weeks=`echo "SELECT DISTINCT(week) FROM sample_info;" | mysql -h $HOST $DB -s`
+O2s=`echo "SELECT DISTINCT(O2) FROM sample_info;" | mysql -h $HOST $DB -s`
+
+tables=""
+
+for week in $weeks
+do
+	for O2 in $O2s
+	do
+		echo week $week w/ O2 $O2
+		if [ ! -e done.$week.$O2 ]
+		then
+			table=`./replicates_join $week $O2`
+			touch done.$week.$O2
+		else
+			table=summary_week${week}_O2${O2}
+		fi
+		tables="$tables $table"
+	done
+done
+
+cat << EOF > $SQL
+DROP TABLE IF EXISTS summary_master;
+CREATE TABLE summary_master AS
+SELECT m.genome, g.locus_tag, g.product
+EOF
+for table in $tables
+do
+	fields=`echo "DESC $table;" | mysql -h $HOST $DB | awk '{ if (substr($1,1,1) == "L") print $1 }'`
+	for field in $fields
+	do
+		printf "\t, $table.$field\n" >> $SQL
+	done
+done
+cat << EOF >> $SQL
+	FROM genes_isolate_genomes AS g
+		LEFT JOIN map_locus_to_organism AS m ON m.locus = g.locus
+EOF
+for table in $tables
+do
+	printf "\tINNER JOIN $table ON $table.locus_tag = g.locus_tag" >> $SQL
+done
+cat << EOF >> $SQL
+;
+SELECT * FROM summary_master;
+EOF
+
+mysql -h $HOST $DB < $SQL > summary.dat
+
+cat << EOF > $SQL
+DROP TABLE IF EXISTS summary_master_genome;
+CREATE TABLE summary_master_genome AS
+SELECT m.genome
+EOF
+for table in $tables
+do
+	fields=`echo "DESC $table;" | mysql -h $HOST $DB | awk '{ if (substr($1,1,1) == "L") print $1 }' | grep reads_mapped`
+	for field in $fields
+	do
+		printf "\t, SUM($table.$field)\n" >> $SQL
+	done
+done
+cat << EOF >> $SQL
+	FROM genes_isolate_genomes AS g
+		LEFT JOIN map_locus_to_organism AS m ON m.locus = g.locus
+EOF
+for table in $tables
+do
+	printf "\tINNER JOIN $table ON $table.locus_tag = g.locus_tag" >> $SQL
+done
+cat << EOF >> $SQL
+	GROUP BY m.genome
+;
+SELECT * FROM summary_master_genome;
+EOF
+
+mysql -h $HOST $DB < $SQL > summary_genome.dat

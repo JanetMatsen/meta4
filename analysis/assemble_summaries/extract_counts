@@ -1,0 +1,25 @@
+#!/bin/bash
+
+source ../globals.sh
+
+# $0 is the filename. So this makes extract_counts.sql 
+SQL=$0.sql
+
+cat << EOF > $SQL
+SELECT genome, locus_tag, product
+EOF
+table=summary_master
+fields=`echo "DESC $table;" | mysql -h $HOST $DB | awk '{ if (substr($1,1,1) == "L") print $1 }' | grep reads_mapped`
+for field in $fields
+do
+	printf "\t, $field\n" >> $SQL
+done
+
+cat << EOF >> $SQL
+	FROM summary_master AS s
+EOF
+cat << EOF >> $SQL
+;
+EOF
+
+mysql -h $HOST $DB < $SQL | sed "s/\#//g" > summary_counts.xls

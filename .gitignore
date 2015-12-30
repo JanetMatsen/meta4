@@ -2,6 +2,7 @@
 *.bam
 *.bam.bai
 *.dat
+*done.*
 *.DS
 *.DS_Store
 *.fasta
